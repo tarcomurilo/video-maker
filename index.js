@@ -16,6 +16,7 @@ function start() {
         const prefixes = ['Who is', 'What is', 'The history of']
         const selectedprefixIndex = readline.keyInSelect(prefixes)
         const selectedprefixText = prefixes[selectedprefixIndex]
+        
         return selectedprefixText
     }
 
