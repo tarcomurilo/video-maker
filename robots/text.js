@@ -1,11 +1,32 @@
 const algorithmia = require('algorithmia')
 const credentials = require('../credentials/credentials.json').apiKey // está a chave da api
+const ibmCredentials = require('../credentials/credentials.json').ibmCredentials
 const sbd = require('sbd')
+const state = require('./state.js')
 
-async function robot(content) {
+// inicio da api do watson da ibm 
+const NaturalLanguageUnderstandingV1 = require('ibm-watson/natural-language-understanding/v1')
+const { IamAuthenticator } = require('ibm-watson/auth')
+
+const nlu = new NaturalLanguageUnderstandingV1({
+  authenticator: new IamAuthenticator({ apikey: ibmCredentials }),
+  version: '2018-04-05',
+  serviceUrl: 'https://api.us-south.natural-language-understanding.watson.cloud.ibm.com/instances/75bd2d12-54aa-41a2-a28c-3eb3334fdbe4'
+})
+//fim da api
+
+async function robot(content) { // inicializa o robt
     await fetchContentFromWikipedia(content)
     sanitizeContent(content)
     breakContentIntoSentences(content)
+    limitMaximumSentences(content)
+    await fetchKeywordsOfAllSentences(content)
+
+    state.save(content)
+
+    function limitMaximumSentences(content){
+        content.sentences = content.sentences.slice(0, content.maximumSentences)
+    }
     
     //função para baixar o texto do wikipedia 
     async function fetchContentFromWikipedia(content) {
@@ -41,23 +62,56 @@ async function robot(content) {
         }
 
         content.sourceContentSanitized = textSanitized
-        console.log("Conteúdo sanitizado")
     }
     
-function breakContentIntoSentences(content){
-    content.sentences = []
-    const sentences = sbd.sentences(content.sourceContentSanitized)
+    function breakContentIntoSentences(content){
+        content.sentences = []
+        const sentences = sbd.sentences(content.sourceContentSanitized)
 
-    sentences.forEach((sentence) => {
-        content.sentences.push({
-            text: sentence,
-            keywords: [],
-            images: []
+        sentences.forEach((sentence) => {
+            content.sentences.push({
+                text: sentence,
+             keywords: [],
+                images: []
+            })
         })
-    })
-}
+    }
+
+    async function fetchKeywordsOfAllSentences(content){
+        for (const sentence of content.sentences) {
+            sentence.keywords = await fetchWatsonAndReturnKeywords(sentence.text)
+        }
+
+    }
+
+    async function fetchWatsonAndReturnKeywords(sentence){
+        return new Promise( (resolve, reject) => {
+            nlu.analyze({ //analisa o texto pelo watson
+                text: sentence,
+                features: {
+                    keywords: {}
+                    }
+                })
+                .then(response => { 
+                    const keywords = response.result.keywords.map(keyword => {
+                        return keyword.text
+                    })
+                    //const keywords = response.keywords.map( keyword  => {
+                    //    return keyword.text
+                    //})
+                    resolve(keywords)
+                })
+                .catch(err => {
+                    console.log('Erro: ', err)
+                   
+                })
+                   
+                
+        })
+            
+
+    }
 
 }
    
-
 module.exports = robot

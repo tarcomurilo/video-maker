@@ -18,7 +18,12 @@
   "homepage": "https://github.com/tarcomurilo/video-maker#readme",
   "dependencies": {
     "algorithmia": "^0.3.10",
+    "fs": "0.0.1-security",
+    "googleapi": "^1.0.2",
+    "googleapis": "^75.0.0",
+    "ibm-watson": "^6.1.1",
     "readline-sync": "^1.4.10",
-    "sbd": "^1.0.19"
+    "sbd": "^1.0.19",
+    "watson-developer-cloud": "^4.0.1"
   }
 }
